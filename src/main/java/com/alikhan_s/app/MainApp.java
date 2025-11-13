@@ -1,5 +1,11 @@
 package com.alikhan_s.app;
 
+import com.google.gson.JsonSyntaxException;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import javafx.application.Application;
@@ -38,6 +44,8 @@ public class MainApp extends Application {
     private Button removeBtn;
     private Button connectBtn;
     private Button jsonBtn;
+    private ComboBox<String> graphSelector;
+    private Label graphLabel;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
@@ -49,17 +57,17 @@ public class MainApp extends Application {
         root.setCenter(visualizer);
 
         setupControls();
-        HBox controlBox = new HBox(10, buildBtn, removeBtn, connectBtn, jsonBtn);
+        HBox controlBox = new HBox(10, graphLabel, graphSelector, buildBtn, removeBtn, connectBtn, jsonBtn);
         controlBox.setPadding(new Insets(10));
         root.setTop(controlBox);
 
+        // 3. Лог (Низ)
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setPrefHeight(150);
         root.setBottom(logArea);
 
-        createDemoGraph();
-        visualizer.setData(mainGraph, null, null, null);
+        loadSelectedGraph();
 
         Scene scene = new Scene(root, 800, 600);
         primaryStage.setTitle("Демонстрация MST");
@@ -68,11 +76,19 @@ public class MainApp extends Application {
     }
 
     /**
-     * Создает и настраивает кнопки управления.
+     * Создает и настраивает кнопки управления и селектор графов.
      */
     private void setupControls() {
+        graphLabel = new Label("Граф:");
+        graphSelector = new ComboBox<>();
+        graphSelector.getItems().addAll("graph_demo.json", "graph_simple.json");
+        graphSelector.setValue("graph_demo.json");
+
+        graphSelector.setOnAction(e -> loadSelectedGraph());
+
         buildBtn = new Button("Шаг 1: Построить MST");
         buildBtn.setOnAction(e -> buildMST());
+        buildBtn.setDisable(true);
 
         removeBtn = new Button("Шаг 2: Удалить ребро");
         removeBtn.setOnAction(e -> removeRandomEdge());
@@ -169,25 +185,70 @@ public class MainApp extends Application {
     }
 
     /**
-     * Создает тестовый граф.
+     * Сбрасывает состояние симуляции.
      */
-    private void createDemoGraph() {
-        // 9 вершин
-        mainGraph = new Graph(9);
-        mainGraph.addEdge(0, 1, 4);
-        mainGraph.addEdge(0, 7, 8);
-        mainGraph.addEdge(1, 2, 8);
-        mainGraph.addEdge(1, 7, 11);
-        mainGraph.addEdge(2, 3, 7);
-        mainGraph.addEdge(2, 8, 2);
-        mainGraph.addEdge(2, 5, 4);
-        mainGraph.addEdge(3, 4, 9);
-        mainGraph.addEdge(3, 5, 14);
-        mainGraph.addEdge(4, 5, 10);
-        mainGraph.addEdge(5, 6, 2);
-        mainGraph.addEdge(6, 7, 1);
-        mainGraph.addEdge(6, 8, 6);
-        mainGraph.addEdge(7, 8, 7);
+    private void resetState() {
+        currentMST = null;
+        splitComponents = null;
+        removedEdge = null;
+        connectingEdge = null;
+
+        visualizer.setData(mainGraph, null, null, null);
+        logArea.clear();
+
+        buildBtn.setDisable(mainGraph == null);
+        removeBtn.setDisable(true);
+        connectBtn.setDisable(true);
+        jsonBtn.setDisable(true);
+    }
+
+    /**
+     * Обработчик для ComboBox: загружает выбранный граф.
+     */
+    private void loadSelectedGraph() {
+        String filename = graphSelector.getValue();
+        if (filename == null || filename.isEmpty()) {
+            log("Файл графа не выбран.");
+            return;
+        }
+        loadGraphFromJson(filename);
+    }
+
+    /**
+     * Загружает граф из JSON-файла.
+     * @param filename Имя файла (в корне проекта)
+     */
+    private void loadGraphFromJson(String filename) {
+        // Используем File.separator, чтобы это работало и на Windows (\), и на Linux (/)
+        String pathToFile = "data" + java.io.File.separator + filename;
+
+        try {
+            // Читаем файл
+            String jsonString = Files.readString(Paths.get(pathToFile));
+
+            // Десериализуем (превращаем JSON-строку обратно в объект Graph)
+            mainGraph = gson.fromJson(jsonString, Graph.class);
+
+            if (mainGraph == null) {
+                log("Ошибка: JSON файл пуст или некорректен. Файл: " + filename);
+                resetState();
+                return;
+            }
+
+            // Сбрасываем симуляцию
+            resetState();
+            log("Граф успешно загружен из: " + filename);
+
+        } catch (IOException e) {
+            log("ОШИБКА: Не удалось прочитать файл " + pathToFile + ". Убедись, что папка 'data' существует в корне проекта.");
+            mainGraph = null;
+            resetState();
+        } catch (JsonSyntaxException e) {
+            log("ОШИБКА: Некорректный синтаксис JSON в файле " + filename + ".");
+            log(e.getMessage());
+            mainGraph = null;
+            resetState();
+        }
     }
 
     /**

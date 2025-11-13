@@ -1,0 +1,19 @@
+{
+  "V": 9,
+  "edges": [
+    { "src": 0, "dest": 1, "weight": 4 },
+    { "src": 0, "dest": 7, "weight": 8 },
+    { "src": 1, "dest": 2, "weight": 8 },
+    { "src": 1, "dest": 7, "weight": 11 },
+    { "src": 2, "dest": 3, "weight": 7 },
+    { "src": 2, "dest": 8, "weight": 2 },
+    { "src": 2, "dest": 5, "weight": 4 },
+    { "src": 3, "dest": 4, "weight": 9 },
+    { "src": 3, "dest": 5, "weight": 14 },
+    { "src": 4, "dest": 5, "weight": 10 },
+    { "src": 5, "dest": 6, "weight": 2 },
+    { "src": 6, "dest": 7, "weight": 1 },
+    { "src": 6, "dest": 8, "weight": 6 },
+    { "src": 7, "dest": 8, "weight": 7 }
+  ]
+}
